@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Archive, CalendarDays, Clock, Users, Trophy, Trash2 } from 'lucide-react'
+import { Archive, CalendarDays, Clock, Users, Trophy, Trash2, Eye } from 'lucide-react'
 import { getSupabaseError, supabase, TABLES } from '../lib/supabase'
+import Review from '../components/Review'
 
 function History() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [reopeningId, setReopeningId] = useState(null)
+  const [selectedSessionId, setSelectedSessionId] = useState(null)
 
   const loadHistory = useCallback(async () => {
     try {
@@ -22,8 +25,8 @@ function History() {
 
       const ids = sessionRows.map((session) => session.id)
       const [playersResult, matchesResult] = await Promise.all([
-        supabase.from(TABLES.players).select('session_id').in('session_id', ids),
-        supabase.from(TABLES.matches).select('session_id').in('session_id', ids),
+        supabase.from(TABLES.players).select('id,session_id,name,wins,losses,points').in('session_id', ids),
+        supabase.from(TABLES.matches).select('id,session_id,court_number,status,team_one_player_ids,team_two_player_ids,team_one_score,team_two_score').in('session_id', ids),
       ])
       if (playersResult.error) throw playersResult.error
       if (matchesResult.error) throw matchesResult.error
@@ -34,6 +37,12 @@ function History() {
       }, {})
       const playerCounts = countBySession(playersResult.data)
       const matchCounts = countBySession(matchesResult.data)
+      const groupBySession = (items) => (items || []).reduce((groups, item) => {
+        (groups[item.session_id] ||= []).push(item)
+        return groups
+      }, {})
+      const playersBySession = groupBySession(playersResult.data)
+      const matchesBySession = groupBySession(matchesResult.data)
       setSessions(sessionRows.map((session) => ({
         id: session.id,
         name: session.name,
@@ -43,6 +52,9 @@ function History() {
           : 'In progress',
         players: playerCounts[session.id] || 0,
         matches: matchCounts[session.id] || 0,
+        courtCount: session.court_count || 0,
+        playerDetails: playersBySession[session.id] || [],
+        matchDetails: matchesBySession[session.id] || [],
         status: session.status === 'completed' ? 'Completed' : 'Active',
       })))
       setError('')
@@ -84,10 +96,32 @@ function History() {
       if (deleteError) throw deleteError
       if (!data?.length) throw new Error('Session was not deleted. Check the database policies and try again.')
       setSessions((current) => current.filter((item) => item.id !== session.id))
+      setSelectedSessionId((current) => current === session.id ? null : current)
     } catch (deleteError) {
       setError(getSupabaseError(deleteError))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function reopenSession(session) {
+    if (reopeningId || deletingId) return
+    const confirmed = window.confirm(`Reopen “${session.name}” and make it the active session again?`)
+    if (!confirmed) return
+    setReopeningId(session.id)
+    setError('')
+    try {
+      const { data, error: reopenError } = await supabase.from(TABLES.sessions)
+        .update({ status: 'active', completed_at: null }).eq('id', session.id).select('id')
+      if (reopenError) throw reopenError
+      if (!data?.length) throw new Error('Session was not reopened. Check the database policies and try again.')
+      setSessions((current) => current.map((item) => item.id === session.id
+        ? { ...item, status: 'Active', duration: 'In progress' }
+        : item))
+    } catch (reopenError) {
+      setError(getSupabaseError(reopenError))
+    } finally {
+      setReopeningId(null)
     }
   }
 
@@ -130,9 +164,10 @@ function History() {
                     <span className="flex items-center gap-1.5"><Clock size={15} />{session.duration}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${session.status === 'Active' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>{session.status}</span>
-                  <button type="button" onClick={() => deleteSession(session)} disabled={deletingId !== null} aria-label={`Delete ${session.name} and all related data`} className="rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40">
+                  <button type="button" onClick={() => setSelectedSessionId(session.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-50"><Eye size={15} />View session</button>
+                  <button type="button" onClick={() => deleteSession(session)} disabled={deletingId !== null || reopeningId !== null} aria-label={`Delete ${session.name} and all related data`} className="rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40">
                     {deletingId === session.id ? <span className="text-xs">Deleting…</span> : <Trash2 size={16} />}
                   </button>
                 </div>
@@ -145,6 +180,12 @@ function History() {
           </div>}
         </section>
       </div>
+      <Review
+        session={sessions.find((session) => session.id === selectedSessionId)}
+        onClose={() => setSelectedSessionId(null)}
+        onReopen={reopenSession}
+        reopening={reopeningId !== null}
+      />
     </main>
   )
 }

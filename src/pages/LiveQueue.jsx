@@ -58,7 +58,7 @@ export default function LiveQueue() {
   })
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 sm:py-8  w-full   pb-24 pt-6  sm:pb-10 sm:pt-8 md:ml-64 md:w-[calc(100%-16rem)]">
+    <main className="min-h-screen w-full bg-slate-100 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
         <header className="relative overflow-hidden rounded-2xl px-5 py-7 shadow-md sm:px-8 sm:py-9" style={{ background: 'linear-gradient(110deg, #052e24 0%, #065f46 55%, #0f766e 100%)', color: '#ffffff' }}>
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
