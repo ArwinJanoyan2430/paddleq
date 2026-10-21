@@ -10,7 +10,6 @@ import {
   Trophy,
   ClipboardList,
 } from "lucide-react";
-import Header from "../components/Header";
 import { getActiveSession, getSupabaseError, supabase, TABLES } from "../lib/supabase";
 
 export default function SetSession() {
@@ -180,9 +179,9 @@ export default function SetSession() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <Header />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-0 sm:py-10">
         {/* Page Heading */}
         <div className="relative mb-7 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-emerald-800 to-teal-700 px-5 py-6 text-white shadow-sm sm:px-7 sm:py-7">
           <div className="pointer-events-none absolute -right-8 -top-16 h-56 w-56 rounded-full border border-white/15" />

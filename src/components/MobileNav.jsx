@@ -16,14 +16,14 @@ function MobileNav() {
       icon: CalendarDays,
     },
     {
-      name: 'Live Queue',
-      path: '/live-queue',
-      icon: ListOrdered,
-    },
-    {
       name: 'Live Matches',
       path: '/live-match-queue',
       icon: Swords,
+    },
+    {
+      name: 'Live Queue',
+      path: '/live-queue',
+      icon: ListOrdered,
     },
     {
       name: 'History',
@@ -39,7 +39,7 @@ function MobileNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 shadow-lg backdrop-blur-md md:hidden">
-      <div className="mx-auto flex max-w-2xl overflow-x-auto px-2 pb-[env(safe-area-inset-bottom)] pt-2">
+      <div className="mx-auto grid w-full max-w-xl grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)] pt-2">
         {navItems.map((item) => {
           const Icon = item.icon
 
@@ -49,7 +49,7 @@ function MobileNav() {
               to={item.path}
               end={item.path === '/'}
               className={({ isActive }) =>
-                `flex min-h-14 min-w-[76px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition ${
+                `flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium transition sm:text-xs ${
                   isActive
                     ? 'text-emerald-600'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'

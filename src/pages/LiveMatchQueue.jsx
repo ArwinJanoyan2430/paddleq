@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Activity, ArrowDown, ArrowUp, History as HistoryIcon, Plus, QrCode, Trophy, Trash2, Users, X } from 'lucide-react'
 import { getActiveSession, getSupabaseError, subscribeToSession, supabase, TABLES } from '../lib/supabase'
+import liveQueueQrCode from '../assets/qr-code.png'
 
 function StatusBadge({ status }) {
   const styles = {
@@ -400,8 +401,8 @@ export default function LiveMatchQueue() {
               <p className="mt-1 text-sm text-white/70">Let players follow the court rotation.</p>
             </div>
             <div className="px-6 py-6 text-center">
-              <div role="img" aria-label="Empty QR code placeholder" className="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-300"><div className="text-center"><QrCode className="mx-auto" size={42} strokeWidth={1.2} /><p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">QR code</p></div></div>
-              <p className="mt-4 text-xs text-slate-500">QR code will appear here when it’s ready.</p>
+              <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><img src={liveQueueQrCode} alt="QR code to open the live queue" className="h-full w-full object-contain" /></div>
+              <p className="mt-4 text-xs text-slate-500">Scan to open the live queue.</p>
               <button type="button" onClick={() => setShowLiveQueueCard(false)} className="mt-5 w-full rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900">Done</button>
             </div>
           </section>

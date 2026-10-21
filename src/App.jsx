@@ -17,6 +17,7 @@ function App() {
   const location = useLocation()
   const showNavMobile = [
     '/set-session',
+    '/live-queue',
     '/live-match-queue',
     '/history',
     '/podium',

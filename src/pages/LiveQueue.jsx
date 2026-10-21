@@ -58,8 +58,8 @@ export default function LiveQueue() {
   })
 
   return (
-    <main className="min-h-screenpx-4 bg-slate-100 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-6xl space-y-6">
+    <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 sm:py-8  w-full   pb-24 pt-6  sm:pb-10 sm:pt-8 md:ml-64 md:w-[calc(100%-16rem)]">
+      <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
         <header className="relative overflow-hidden rounded-2xl px-5 py-7 shadow-md sm:px-8 sm:py-9" style={{ background: 'linear-gradient(110deg, #052e24 0%, #065f46 55%, #0f766e 100%)', color: '#ffffff' }}>
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -84,7 +84,7 @@ export default function LiveQueue() {
             <Link to="/set-session" className="mt-5 inline-flex rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Set up session</Link>
           </section>
         ) : session && <>
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)] 2xl:gap-6"><section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">On court</p><h2 className="mt-1 text-lg font-semibold text-slate-900">Live matches</h2></div><span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800">{activeMatches.length} active</span></div>
               {visibleMatches.length ? <div className="mt-5 space-y-3">
                 {visibleMatches.map((match) => {
@@ -103,9 +103,9 @@ export default function LiveQueue() {
                         <h3 className="text-sm font-bold tracking-wide">COURT {match.court_number}</h3>
                         <span className="inline-flex min-h-7 items-center rounded-full px-3 text-xs font-bold leading-none" style={statusStyle}>{statusLabel}</span>
                       </div>
-                      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-white/25 bg-black/10 p-2.5 sm:p-3">
+                      <div className="mt-3 grid grid-cols-1 items-center gap-2 rounded-lg border border-white/25 bg-black/10 p-2.5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:p-3">
                         <p className="min-w-0 break-words text-center text-xs font-semibold leading-5 sm:text-sm">{teamOne}</p>
-                        <span className="rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold tracking-wider text-white/80">VS</span>
+                        <span className="mx-auto rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold tracking-wider text-white/80">VS</span>
                         <p className="min-w-0 break-words text-center text-xs font-semibold leading-5 sm:text-sm">{teamTwo}</p>
                       </div>
                     </article>
@@ -115,7 +115,7 @@ export default function LiveQueue() {
             </section>
 
             
-            <section className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm sm:p-5">
+            <section className="min-w-0 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Next on court</p><h2 className="mt-1 text-lg font-semibold text-slate-900">Up next</h2><p className="mt-1 text-sm text-slate-500">Players are grouped by doubles team</p></div>
                 <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">{upNextIds.length}/4 players</span>
@@ -124,7 +124,7 @@ export default function LiveQueue() {
                 <div className="pointer-events-none absolute inset-2 rounded-lg border-2 border-white/80" />
                 <div className="pointer-events-none absolute inset-y-2 left-1/2 border-l-2 border-white/80" />
                 <div className="pointer-events-none absolute inset-x-2 top-1/2 border-t-2 border-white/80" />
-                <div className="relative grid grid-cols-2 gap-3 sm:gap-5">
+                <div className="relative grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
                   {[0, 1].map((teamIndex) => {
                     const teamPlayers = upNextIds.slice(teamIndex * 2, teamIndex * 2 + 2)
                     const teamName = teamIndex === 0 ? 'Team A' : 'Team B'
@@ -147,13 +147,13 @@ export default function LiveQueue() {
             </section>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] 2xl:gap-6">
+            <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Queue order</p><h2 className="mt-1 text-lg font-semibold text-slate-900">Waiting players</h2></div><span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">{waiting.length} waiting</span></div>
               {waiting.length ? <ol className="divide-y divide-slate-100">{waiting.map((player, index) => <li key={player.id} className="flex items-center gap-3 py-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${index < 4 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>{index + 1}</span><span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">{player.name}</span>{index < 4 && <span title="Up next" aria-label="Up next" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"><ArrowUp size={15} strokeWidth={2.5} /></span>}</li>)}</ol> : <Empty message="The waiting list is clear." />}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Session stats</p><h2 className="mt-1 text-lg font-semibold text-slate-900">Win rate</h2></div><TrendingUp className="text-emerald-600" size={20} /></div>
               {rankedPlayers.length ? <div className="overflow-x-auto"><table className="w-full min-w-[350px] text-left"><thead><tr className="border-b border-slate-200 text-[10px] font-semibold uppercase tracking-wider text-slate-400"><th className="py-3 pr-2">#</th><th className="py-3">Player</th><th className="py-3 text-center">W-L</th><th className="py-3 text-right">Rate</th></tr></thead><tbody>{rankedPlayers.map((player, index) => { const games = player.wins + player.losses; const rate = games ? player.wins / games : 0; return <tr key={player.id} className="border-b border-slate-100 last:border-0"><td className="py-3 pr-2 text-sm text-slate-400">{index === 0 ? <Medal size={16} className="text-rose-500" /> : index + 1}</td><td className="max-w-36 truncate py-3 text-sm font-medium text-slate-800">{player.name}</td><td className="py-3 text-center text-sm text-slate-500">{player.wins}-{player.losses}</td><td className="py-3 text-right text-sm font-semibold text-slate-900">{Math.round(rate * 100)}%</td></tr> })}</tbody></table></div> : <Empty message="Standings appear as players complete matches." />}
             </section>
