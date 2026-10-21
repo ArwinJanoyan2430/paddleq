@@ -49,6 +49,9 @@ export default function Home() {
           </div>
         </section>
       </div>
+      <footer className="relative mx-auto mt-8 w-full max-w-6xl border-t border-white/10 pt-4 text-center text-xs text-emerald-100/55 sm:text-right">
+        Made by <span className="font-semibold text-lime-200">Arwin Janoyan</span>
+      </footer>
     </main>
   )
 }
