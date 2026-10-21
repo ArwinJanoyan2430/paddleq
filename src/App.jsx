@@ -32,7 +32,7 @@ function App() {
   ].includes(location.pathname)
 
   return (
-    <div className={`${showNav ? 'md:ml-64' : ''} min-h-screen ${showNavMobile ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
+    <div className={`bg-slate-100 ${showNav ? 'md:ml-64' : ''} min-h-screen ${showNavMobile ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
       {showNav && <PCNav />}
       <Routes>
         <Route path="/" element={<Home />} />
