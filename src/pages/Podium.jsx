@@ -12,7 +12,7 @@ function winRate(player) {
   const wins = player.wins || 0
   const losses = player.losses || 0
   const games = wins + losses
-  return games ? wins / games : 0
+  return games ? Math.round((wins / games) * 100) : 0
 }
 
 export default function Podium() {
@@ -61,24 +61,17 @@ export default function Podium() {
 
   async function clearSessionData() {
     if (!session || clearing) return
-    const confirmed = window.confirm(`Clear all players, matches, and results from "${session.name}"? The session will remain in History.`)
+    const confirmed = window.confirm(`Permanently clear "${session.name}" and all its players, matches, and results? This cannot be undone.`)
     if (!confirmed) return
     setClearing(true)
     setError('')
     try {
-      const { error: matchesError } = await supabase.from(TABLES.matches)
-        .delete().eq('session_id', session.id)
-      if (matchesError) throw matchesError
-      const { error: playersError } = await supabase.from(TABLES.players)
-        .delete().eq('session_id', session.id)
-      if (playersError) throw playersError
-      const { data: updatedSession, error: updateError } = await supabase.from(TABLES.sessions)
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('id', session.id).select('id').maybeSingle()
-      if (updateError) throw updateError
-      if (!updatedSession) throw new Error('Session data was not cleared. Check the database policies and try again.')
+      const { data, error: deleteError } = await supabase.from(TABLES.sessions)
+        .delete().eq('id', session.id).select('id')
+      if (deleteError) throw deleteError
+      if (!data?.length) throw new Error('Session data was not cleared. Check the database policies and try again.')
+      setSession(null)
       setPlayers([])
-      setSession({ ...session, status: 'completed' })
     } catch (err) {
       setError(getSupabaseError(err))
     } finally {
@@ -149,7 +142,7 @@ export default function Podium() {
                   <div className="mt-5"><p className="truncate text-lg font-semibold text-slate-900">{player.name}</p><p className="mt-1 text-sm text-slate-600">{player.wins || 0} wins · {player.losses || 0} losses</p></div>
                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-black/5 pt-4">
                     <div><p className="text-xs text-slate-500">Points</p><p className="mt-1 text-xl font-bold text-slate-900">{player.points || 0}</p></div>
-                    <div><p className="text-xs text-slate-500">Win rate</p><p className="mt-1 text-xl font-bold text-emerald-800">{Math.round(winRate(player) * 100)}%</p></div>
+                    <div><p className="text-xs text-slate-500">Win rate</p><p className="mt-1 text-xl font-bold text-emerald-800">{winRate(player)}%</p></div>
                   </div>
                 </article>
               })}
@@ -160,7 +153,7 @@ export default function Podium() {
             <div className="border-b border-slate-100 px-4 py-4 sm:px-5"><h2 className="text-base font-semibold text-slate-900">Leaderboard</h2><p className="mt-1 text-sm text-slate-500">Player rankings and win rates for this session.</p></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left">
               <thead className="bg-slate-50"><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400"><th className="px-4 py-3 font-medium">Rank</th><th className="px-4 py-3 font-medium">Player</th><th className="px-4 py-3 text-center font-medium">Wins</th><th className="px-4 py-3 text-center font-medium">Losses</th><th className="px-4 py-3 text-center font-medium">Win rate</th><th className="px-4 py-3 text-right font-medium">Points</th></tr></thead>
-              <tbody>{rankedPlayers.map((player, index) => <tr key={player.id} className="border-b border-slate-100 last:border-0 hover:bg-emerald-50/40"><td className="px-4 py-3.5 text-sm font-semibold text-slate-500">{index + 1}</td><td className="px-4 py-3.5 font-medium text-slate-900">{player.name}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.wins || 0}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.losses || 0}</td><td className="px-4 py-3.5 text-center"><span className="inline-flex min-w-14 justify-center rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-800">{Math.round(winRate(player) * 100)}%</span></td><td className="px-4 py-3.5 text-right font-semibold text-slate-900">{player.points || 0}</td></tr>)}</tbody>
+              <tbody>{rankedPlayers.map((player, index) => <tr key={player.id} className="border-b border-slate-100 last:border-0 hover:bg-emerald-50/40"><td className="px-4 py-3.5 text-sm font-semibold text-slate-500">{index + 1}</td><td className="px-4 py-3.5 font-medium text-slate-900">{player.name}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.wins || 0}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.losses || 0}</td><td className="px-4 py-3.5 text-center"><span className="inline-flex min-w-14 justify-center rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-800">{winRate(player)}%</span></td><td className="px-4 py-3.5 text-right font-semibold text-slate-900">{player.points || 0}</td></tr>)}</tbody>
             </table></div>
           </section>
         </>}
