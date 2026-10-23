@@ -5,9 +5,10 @@ import {
   ArrowDown,
   ArrowUp,
   History as HistoryIcon,
+  Medal,
   Plus,
   QrCode,
-  Trophy,
+  TrendingUp,
   Trash2,
   Users,
   X,
@@ -39,6 +40,12 @@ function StatusBadge({ status }) {
   );
 }
 
+function playerWinRate(player) {
+  const wins = player.wins || 0;
+  const games = wins + (player.losses || 0);
+  return games ? wins / games : 0;
+}
+
 function mixTeams(players, matches) {
   const pairKey = (first, second) => [first.id, second.id].sort().join(":");
   const partnerCounts = new Map();
@@ -67,12 +74,15 @@ function mixTeams(players, matches) {
       [1, 2],
     ],
   ];
+  // Smooth small samples toward 50% so one early win/loss does not dominate
+  // team balancing. Players with no results are treated as evenly matched.
   const winRate = (player) => {
-    const games = player.wins + player.losses;
-    return games ? player.wins / games : 0.5;
+    const wins = Number(player.wins) || 0;
+    const losses = Number(player.losses) || 0;
+    return (wins + 1) / (wins + losses + 2);
   };
-  const scored = candidates.map((teams, index) => {
-    const pairRepeats = teams.reduce(
+  const scored = candidates.map((teams) => {
+    const repeatedPartnerships = teams.reduce(
       (sum, [first, second]) =>
         sum +
         (partnerCounts.get(pairKey(players[first], players[second])) || 0),
@@ -84,12 +94,22 @@ function mixTeams(players, matches) {
       (winRate(players[teams[1][0]]) + winRate(players[teams[1][1]])) / 2;
     return {
       teams,
-      index,
-      score: pairRepeats * 100 + Math.abs(teamOneRate - teamTwoRate) * 10,
+      repeatedPartnerships,
+      teamStrengthGap: Math.abs(teamOneRate - teamTwoRate),
     };
   });
-  scored.sort((a, b) => a.score - b.score || a.index - b.index);
-  const [teamOne, teamTwo] = scored[0].teams;
+  scored.sort(
+    (a, b) =>
+      a.repeatedPartnerships - b.repeatedPartnerships ||
+      a.teamStrengthGap - b.teamStrengthGap,
+  );
+  const best = scored.filter(
+    (candidate) =>
+      candidate.repeatedPartnerships === scored[0].repeatedPartnerships &&
+      Math.abs(candidate.teamStrengthGap - scored[0].teamStrengthGap) < 1e-9,
+  );
+  const [teamOne, teamTwo] =
+    best[Math.floor(Math.random() * best.length)].teams;
   return {
     teamOne: teamOne.map((index) => players[index]),
     teamTwo: teamTwo.map((index) => players[index]),
@@ -98,11 +118,18 @@ function mixTeams(players, matches) {
 
 function CourtCard({ court, onAssign, onStart, onFinish, busy, canAssign }) {
   const renderTeam = (team, number, position) => (
-    <div className={`absolute ${position} flex flex-col items-center justify-center`}>
-      <span className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/80">Team {number}</span>
+    <div
+      className={`absolute ${position} flex flex-col items-center justify-center`}
+    >
+      <span className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/80">
+        Team {number}
+      </span>
       <div className="flex w-full flex-col items-center gap-1">
         {team.map((player) => (
-          <span key={player} className="w-full truncate rounded-md border border-white/30 bg-emerald-950/45 px-1.5 py-0.5 text-center text-[9px] font-semibold text-white sm:text-[10px]">
+          <span
+            key={player}
+            className="w-full truncate rounded-md border border-white/30 bg-emerald-950/45 px-1.5 py-0.5 text-center text-[9px] font-semibold text-white sm:text-[10px]"
+          >
             {player}
           </span>
         ))}
@@ -114,10 +141,16 @@ function CourtCard({ court, onAssign, onStart, onFinish, busy, canAssign }) {
     <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-md">
       <div className="mb-2.5 flex items-center justify-between gap-3 px-1">
         <div className="flex items-center gap-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-950 text-xs font-bold text-lime-300">{String(court.id).padStart(2, "0")}</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-950 text-xs font-bold text-lime-300">
+            {String(court.id).padStart(2, "0")}
+          </span>
           <div>
-            <h3 className="font-semibold leading-tight text-slate-900">Court {court.id}</h3>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">Doubles court</p>
+            <h3 className="font-semibold leading-tight text-slate-900">
+              Court {court.id}
+            </h3>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+              Doubles court
+            </p>
           </div>
         </div>
         <StatusBadge status={court.status} />
@@ -129,14 +162,19 @@ function CourtCard({ court, onAssign, onStart, onFinish, busy, canAssign }) {
         <div className="pointer-events-none absolute inset-y-0 left-[31%] border-l-2 border-white/85" />
         <div className="pointer-events-none absolute inset-y-0 right-[31%] border-r-2 border-white/85" />
         {court.status === "Available" ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white">
-            <span className="rounded-full border border-white/40 bg-emerald-950/40 px-2.5 py-0.5 text-[11px] font-bold">Court open</span>
-            <span className="mt-1 text-[9px] text-white/85">Ready for the next four</span>
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center text-white">
+            <div className="flex flex-col rounded-xl border border-white/20 bg-emerald-950/80 p-3 shadow-lg">
+              <span className="rounded-full border border-white/40 bg-emerald-950 px-2.5 py-0.5 text-[11px] font-bold">
+                Court open
+              </span>
+              <span className="mt-1 text-[9px] text-white/85">
+                Ready for the next four
+              </span>
+            </div>
           </div>
         ) : (
           <>
             {renderTeam(court.team1, 1, "inset-y-1 left-[2%] w-[27%]")}
-            <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/50 bg-white px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-emerald-950 shadow">Net</span>
             {renderTeam(court.team2, 2, "inset-y-1 right-[2%] w-[27%]")}
           </>
         )}
@@ -155,7 +193,9 @@ function CourtCard({ court, onAssign, onStart, onFinish, busy, canAssign }) {
       {court.matchId &&
         (court.status === "In progress" ? (
           <div className="mt-2">
-            <p className="mb-1.5 text-[11px] font-medium text-slate-500">Select the winning team</p>
+            <p className="mb-1.5 text-[11px] font-medium text-slate-500">
+              Select the winning team
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {[court.team1, court.team2].map((team, index) => (
                 <button
@@ -167,7 +207,9 @@ function CourtCard({ court, onAssign, onStart, onFinish, busy, canAssign }) {
                   className="min-w-0 rounded-lg bg-emerald-700 px-2 py-2 text-center text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50"
                 >
                   <span className="block">Team {index + 1} wins</span>
-                  <span className="mt-0.5 block truncate text-[9px] font-medium text-emerald-100">{team.join(" & ")}</span>
+                  <span className="mt-0.5 block truncate text-[9px] font-medium text-emerald-100">
+                    {team.join(" & ")}
+                  </span>
                 </button>
               ))}
             </div>
@@ -265,6 +307,13 @@ export default function LiveMatchQueue() {
   const waiting = [...players]
     .filter((player) => player.status === "waiting")
     .sort((a, b) => a.queue_position - b.queue_position);
+  const rankedPlayers = [...players].sort(
+    (a, b) =>
+      (b.points || 0) - (a.points || 0) ||
+      playerWinRate(b) - playerWinRate(a) ||
+      (b.wins || 0) - (a.wins || 0) ||
+      a.name.localeCompare(b.name),
+  );
 
   async function addPlayer(event) {
     event.preventDefault();
@@ -299,7 +348,8 @@ export default function LiveMatchQueue() {
   }
 
   async function removePlayer(player) {
-    if (busy) return;
+    if (busy || !window.confirm(`Remove ${player.name} from the waiting list?`))
+      return;
     setBusy(true);
     setError("");
     try {
@@ -654,26 +704,7 @@ export default function LiveMatchQueue() {
             </section>
           </div>
         )}
-        {session && (
-          <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div>
-              <h2 className="font-semibold text-slate-900">
-                Finish this session
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Archive it in Session History when all courts are clear.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={completeSession}
-              disabled={busy || activeMatchCount > 0}
-              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Finish session
-            </button>
-          </section>
-        )}
+        
 
         {error && (
           <p
@@ -765,38 +796,67 @@ export default function LiveMatchQueue() {
             ))}
           </div>
         </section>
-        <section className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:p-5">
-          <h2 className="font-semibold text-slate-900">Next four players</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            These players will be assigned when you select an open court below.
-          </p>
-          {waiting.length >= 4 ? (
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {waiting.slice(0, 4).map((player, index) => (
-                <div
-                  key={player.id}
-                  className="flex items-center gap-3 rounded-lg bg-white p-3"
-                >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-xs font-semibold text-emerald-700">
-                    {index + 1}
-                  </span>
-                  <span className="text-sm font-medium text-slate-800">
-                    {player.name}
-                  </span>
-                  <span className="ml-auto text-xs text-slate-400">
-                    Team {index < 2 ? "A" : "B"}
-                  </span>
-                </div>
-              ))}
+        <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                Next four players
+              </h2>
+            </div>
+            <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+              {Math.min(waiting.length, 4)}/4 players
+            </span>
+          </div>
+          {waiting.length ? (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {[0, 1].map((teamIndex) => {
+                const teamPlayers = waiting.slice(
+                  teamIndex * 2,
+                  teamIndex * 2 + 2,
+                );
+                return (
+                  <div
+                    key={teamIndex}
+                    className="min-w-0 rounded-xl bg-slate-50 p-2.5 sm:p-3"
+                  >
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Team {teamIndex + 1}
+                    </p>
+                    <div className="space-y-1.5">
+                      {[0, 1].map((slot) => {
+                        const player = teamPlayers[slot];
+                        return (
+                          <div
+                            key={player?.id || `waiting-${teamIndex}-${slot}`}
+                            className={`flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-2 ${player ? "bg-white text-slate-800 shadow-sm" : "border border-dashed border-slate-200 text-slate-400"}`}
+                          >
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[9px] font-bold text-emerald-800">
+                              {teamIndex * 2 + slot + 1}
+                            </span>
+                            <span className="truncate text-xs font-medium">
+                              {player?.name || "Waiting"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <p className="mt-3 rounded-lg bg-white p-4 text-sm text-slate-600">
+            <p className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              Waiting for players to join the queue.
+            </p>
+          )}
+          {waiting.length > 0 && waiting.length < 4 && (
+            <p className="mt-3 text-xs text-slate-500">
               Waiting for {4 - waiting.length} more player
-              {4 - waiting.length === 1 ? "" : "s"}.
+              {waiting.length === 3 ? "" : "s"} before a match can be assigned.
             </p>
           )}
         </section>
-        
+
         {session && (
           <>
             <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
@@ -829,7 +889,8 @@ export default function LiveMatchQueue() {
               </form>
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+            <section className="h-full rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold text-slate-900">
@@ -844,13 +905,17 @@ export default function LiveMatchQueue() {
                 </span>
               </div>
               {waiting.length ? (
-                <ol className="divide-y divide-slate-100">
+                <ol className="max-h-[26rem] divide-y divide-slate-100 overflow-y-auto xl:max-h-none xl:overflow-visible">
                   {waiting.map((player, index) => (
                     <li
                       key={player.id}
-                      className="flex items-center gap-2 py-2.5"
+                      className={`flex items-center gap-2 px-2 py-2.5 ${
+                        index < 4
+                          ? "rounded-lg bg-emerald-50/80"
+                          : ""
+                      }`}
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-700">
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${index < 4 ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-500"}`}>
                         {index + 1}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
@@ -892,29 +957,57 @@ export default function LiveMatchQueue() {
                 </p>
               )}
             </section>
+            <section className="h-full min-w-0 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Session stats</p>
+                  <h2 className="mt-1 font-semibold text-slate-900">Win rate</h2>
+                </div>
+                <TrendingUp className="text-emerald-600" size={19} />
+              </div>
+              {rankedPlayers.length ? (
+                <div className="max-h-[26rem] overflow-y-auto xl:max-h-none xl:overflow-visible">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-3 border-b border-slate-100 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    <span>Player</span><span className="text-center">W-L</span><span className="text-right">Rate</span>
+                  </div>
+                  <ol className="divide-y divide-slate-100">
+                    {rankedPlayers.map((player, index) => (
+                      <li key={player.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-2.5">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span
+                            role="img"
+                            aria-label={index < 3 ? `${["Gold", "Silver", "Bronze"][index]} place` : `Rank ${index + 1}`}
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${index === 0 ? "bg-amber-100 text-amber-600" : index === 1 ? "bg-slate-100 text-slate-500" : index === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-500"}`}
+                          >
+                            {index < 3 ? <Medal size={16} aria-hidden="true" /> : index + 1}
+                          </span>
+                          <span className="truncate text-sm font-medium text-slate-800">{player.name}</span>
+                        </span>
+                        <span className="text-center text-xs text-slate-500">{player.wins || 0}-{player.losses || 0}</span>
+                        <span className="min-w-12 rounded-full bg-emerald-50 px-2 py-1 text-right text-xs font-semibold text-emerald-800">{Math.round(playerWinRate(player) * 100)}%</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <p className="rounded-lg bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">Standings appear after matches are played.</p>
+              )}
+            </section>
+            </div>
           </>
         )}
 
         {/* Match History */}
         <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
-                <HistoryIcon size={20} />
-              </div>
-              <div>
-                <h2 className="font-semibold text-slate-900">Match history</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Completed matches from this session.
-                </p>
-              </div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-slate-900">Match history</h2>
+              <p className="mt-1 text-sm text-slate-500">Completed matches from this session.</p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-              {completedMatches.length} played
-            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{completedMatches.length} played</span>
           </div>
           {completedMatches.length ? (
-            <ol className="max-h-[28rem] space-y-3 overflow-y-auto overscroll-contain pr-2">
+            <ol className="max-h-[28rem] divide-y divide-slate-100 overflow-y-auto overscroll-contain">
               {completedMatches.map((match) => {
                 const teamOne = match.team_one_player_ids.map(
                   (id) =>
@@ -933,75 +1026,28 @@ export default function LiveMatchQueue() {
                       ? 2
                       : 0;
                 const date = match.completed_at || match.created_at;
+                const score = `${match.team_one_score ?? "-"} : ${match.team_two_score ?? "-"}`;
                 return (
-                  <li
-                    key={match.id}
-                    className="rounded-lg border border-slate-200 p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Court {match.court_number}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <time className="text-xs text-slate-400">
-                          {date
-                            ? new Date(date).toLocaleString()
-                            : "Time unavailable"}
-                        </time>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => deleteMatch(match)}
-                          aria-label={`Delete match from Court ${match.court_number}`}
-                          className="rounded-md p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                  <li key={match.id} className="flex items-center gap-2.5 py-3 sm:gap-4">
+                    <span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">C{match.court_number}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 text-xs sm:gap-2 sm:text-sm">
+                        <span className={`truncate ${winner === 1 ? "font-semibold text-emerald-800" : "text-slate-700"}`} title={teamOne.join(" & ")}>{teamOne.join(" & ")}</span>
+                        <span className="text-[10px] text-slate-400">vs</span>
+                        <span className={`truncate text-right ${winner === 2 ? "font-semibold text-emerald-800" : "text-slate-700"}`} title={teamTwo.join(" & ")}>{teamTwo.join(" & ")}</span>
                       </div>
+                      <time className="mt-1 block text-[10px] text-slate-400">{date ? new Date(date).toLocaleString() : "Time unavailable"}</time>
                     </div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                      <div
-                        className={`rounded-lg p-3 ${winner === 1 ? "bg-emerald-50" : "bg-slate-50"}`}
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Team 1{" "}
-                          {winner === 1 && (
-                            <Trophy
-                              size={13}
-                              className="ml-1 inline text-amber-500"
-                            />
-                          )}
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">
-                          {teamOne.join(" & ")}
-                        </p>
-                      </div>
-                      <span className="text-center text-xs font-bold text-slate-400">
-                        {match.team_one_score ?? "-"} :{" "}
-                        {match.team_two_score ?? "-"}
-                      </span>
-                      <div
-                        className={`rounded-lg p-3 ${winner === 2 ? "bg-emerald-50" : "bg-slate-50"}`}
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Team 2{" "}
-                          {winner === 2 && (
-                            <Trophy
-                              size={13}
-                              className="ml-1 inline text-amber-500"
-                            />
-                          )}
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">
-                          {teamTwo.join(" & ")}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-xs font-medium text-slate-500">
-                      {winner
-                        ? `Winner: Team ${winner}`
-                        : "Winner not recorded"}
-                    </p>
+                    <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">{score}</span>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => deleteMatch(match)}
+                      aria-label={`Delete match from Court ${match.court_number}`}
+                      className="shrink-0 rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </li>
                 );
               })}
@@ -1017,7 +1063,28 @@ export default function LiveMatchQueue() {
               </p>
             </div>
           )}
+          
         </section>
+        {session && (
+          <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <h2 className="font-semibold text-slate-900">
+                Finish this session
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Archive it in Session History when all courts are clear.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={completeSession}
+              disabled={busy || activeMatchCount > 0}
+              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Finish session
+            </button>
+          </section>
+        )}
       </div>
     </main>
   );

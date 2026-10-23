@@ -2,6 +2,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   CalendarDays,
+  ListOrdered,
   Swords,
   History,
   Trophy,
@@ -43,7 +44,7 @@ function MobileNav() {
               to={item.path}
               end={item.path === '/'}
               className={({ isActive }) =>
-                `flex min-h-14 min-w-[76px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition ${
+                `flex min-h-14 min-w-[64px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium transition ${
                   isActive
                     ? 'text-emerald-600'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'

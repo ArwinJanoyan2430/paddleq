@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useState } from 'react'
-import { Medal, Trophy, TrendingUp, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Medal, Plus, Trophy, TrendingUp, Users } from 'lucide-react'
 import { getSupabaseError, supabase, TABLES } from '../lib/supabase'
 
 const podiumStyles = {
@@ -19,7 +20,7 @@ export default function Podium() {
   const [players, setPlayers] = useState([])
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [clearing, setClearing] = useState(false)
+  const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState('')
 
   const refresh = useCallback(async () => {
@@ -59,23 +60,23 @@ export default function Podium() {
     }
   }, [])
 
-  async function clearSessionData() {
-    if (!session || clearing) return
-    const confirmed = window.confirm(`Permanently clear "${session.name}" and all its players, matches, and results? This cannot be undone.`)
+  async function finishPodium() {
+    if (!session || session.status !== 'active' || finishing) return
+    const confirmed = window.confirm(`Finish the podium for "${session.name}" and save it to Session History?`)
     if (!confirmed) return
-    setClearing(true)
+    setFinishing(true)
     setError('')
     try {
-      const { data, error: deleteError } = await supabase.from(TABLES.sessions)
-        .delete().eq('id', session.id).select('id')
-      if (deleteError) throw deleteError
-      if (!data?.length) throw new Error('Session data was not cleared. Check the database policies and try again.')
-      setSession(null)
-      setPlayers([])
+      const { data, error: updateError } = await supabase.from(TABLES.sessions)
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', session.id).eq('status', 'active').select('id')
+      if (updateError) throw updateError
+      if (!data?.length) throw new Error('Podium was not finished. Refresh and try again.')
+      await refresh()
     } catch (err) {
       setError(getSupabaseError(err))
     } finally {
-      setClearing(false)
+      setFinishing(false)
     }
   }
 
@@ -110,7 +111,14 @@ export default function Podium() {
               <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Podium</h1>
               <p className="mt-2 text-sm text-white/85 sm:text-base">{session ? `${session.name} · ${session.status === 'active' ? 'Live standings' : 'Final standings'}` : 'Standings for your latest session.'}</p>
             </div>
-            {session && <div className="flex flex-wrap items-center gap-2"><span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">{session.status === 'active' ? 'Session live' : 'Session complete'}</span><button type="button" onClick={clearSessionData} disabled={clearing} className="rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">{clearing ? 'Clearing...' : 'Clear data'}</button></div>}
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <div className="flex flex-wrap items-center gap-2">
+                {session && <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">{session.status === 'active' ? 'Session live' : 'Session complete'}</span>}
+                {session?.status === 'active' && <button type="button" onClick={finishPodium} disabled={finishing} className="rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">{finishing ? 'Finishing...' : 'Finish podium'}</button>}
+                {session?.status !== 'active' && <Link to="/set-session" className="inline-flex items-center gap-1.5 rounded-full bg-lime-300 px-3 py-1.5 text-xs font-semibold text-emerald-950 transition hover:bg-lime-200"><Plus size={15} />New session</Link>}
+              </div>
+              <p className="text-xs text-white/70">Standings update automatically when a new session is created.</p>
+            </div>
           </div>
         </header>
 

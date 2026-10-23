@@ -4,7 +4,7 @@ import Login from '../components/Login'
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#071c17] px-4 py-5 text-white sm:px-6 sm:py-8">
+    <main className="relative min-h-screen overflow-hidden bg-[#071c17] px-4 py-5 text-white sm:px-6 sm:py-8 lg:h-dvh lg:min-h-0">
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_18%_25%,rgba(20,126,87,.35),transparent_42%),radial-gradient(ellipse_at_90%_80%,rgba(10,113,107,.2),transparent_38%)]" />
         <div className="absolute -right-24 top-10 h-[34rem] w-[34rem] rounded-full border border-lime-200/10" />
@@ -13,7 +13,7 @@ export default function Home() {
         <div className="absolute right-10 top-1/2 hidden w-[43%] border-t border-lime-200/15 lg:block" />
       </div>
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-2.5rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
+      <div className="relative mx-auto grid min-h-[calc(100vh-2.5rem)] w-full max-w-6xl items-center gap-10 lg:h-full lg:min-h-0 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
         <section className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:text-left">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-300 shadow-lg shadow-lime-950/30"><img src={Logo} alt="PaddleQ" className="h-12 w-12 object-contain" /></div>
@@ -43,15 +43,13 @@ export default function Home() {
               <div className="px-5 py-5 sm:px-7 sm:py-7">
                 <p className="text-sm text-slate-500">Sign in and get the next game moving.</p>
                 <Login />
+                <p className="mt-5 text-center text-xs text-slate-400">Made by <span className="font-semibold text-emerald-700">Arwin Janoyan</span></p>
                 <p className="mt-5 text-center text-[11px] text-slate-400">PaddleQ · Courtside session manager</p>
               </div>
             </div>
           </div>
         </section>
       </div>
-      <footer className="relative mx-auto mt-8 w-full max-w-6xl border-t border-white/10 pt-4 text-center text-xs text-emerald-100/55 sm:text-right">
-        Made by <span className="font-semibold text-lime-200">Arwin Janoyan</span>
-      </footer>
     </main>
   )
 }
