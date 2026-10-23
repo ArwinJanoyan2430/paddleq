@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, ArrowUp, ArrowUpRight, ListOrdered, Medal, Radio, TrendingUp } from 'lucide-react'
+import { Activity, ArrowUp, ListOrdered, Medal, Radio, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getActiveSession, getSupabaseError, subscribeToSession } from '../lib/supabase'
 
@@ -54,7 +54,10 @@ export default function LiveQueue() {
   const rankedPlayers = [...players].sort((a, b) => {
     const rateA = a.wins + a.losses ? a.wins / (a.wins + a.losses) : 0
     const rateB = b.wins + b.losses ? b.wins / (b.wins + b.losses) : 0
-    return rateB - rateA || a.name.localeCompare(b.name)
+    return (b.points || 0) - (a.points || 0) ||
+      rateB - rateA ||
+      (b.wins || 0) - (a.wins || 0) ||
+      a.name.localeCompare(b.name)
   })
 
   return (

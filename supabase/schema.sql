@@ -191,8 +191,58 @@ begin
 end;
 $$;
 
+-- Remove a completed match and reverse its player stats atomically.
+create or replace function public.paddleq_delete_match(
+  p_match_id uuid
+) returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_match public.matches%rowtype;
+  v_winning_team integer;
+begin
+  select * into v_match from public.matches where id = p_match_id for update;
+  if not found then
+    raise exception 'This match no longer exists.';
+  end if;
+  if v_match.status <> 'completed' then
+    raise exception 'Only completed matches can be removed from match history.';
+  end if;
+
+  -- Serialize result corrections against other match updates in this session.
+  perform 1 from public.sessions where id = v_match.session_id for update;
+
+  v_winning_team := case
+    when v_match.team_one_score > v_match.team_two_score then 1
+    when v_match.team_two_score > v_match.team_one_score then 2
+    else 0
+  end;
+
+  if v_winning_team <> 0 then
+    update public.players as player set
+      wins = greatest(0, player.wins - case when v_winning_team = 1 then 1 else 0 end),
+      losses = greatest(0, player.losses - case when v_winning_team = 2 then 1 else 0 end),
+      points = greatest(0, player.points - case when v_winning_team = 1 then 3 else 0 end)
+    where player.session_id = v_match.session_id
+      and player.id = any(v_match.team_one_player_ids);
+
+    update public.players as player set
+      wins = greatest(0, player.wins - case when v_winning_team = 2 then 1 else 0 end),
+      losses = greatest(0, player.losses - case when v_winning_team = 1 then 1 else 0 end),
+      points = greatest(0, player.points - case when v_winning_team = 2 then 3 else 0 end)
+    where player.session_id = v_match.session_id
+      and player.id = any(v_match.team_two_player_ids);
+  end if;
+
+  delete from public.matches where id = p_match_id;
+end;
+$$;
+
 grant execute on function public.paddleq_assign_match(uuid, integer, uuid[], uuid[]) to anon, authenticated;
 grant execute on function public.paddleq_finish_match(uuid, integer) to anon, authenticated;
+grant execute on function public.paddleq_delete_match(uuid) to anon, authenticated;
 notify pgrst, 'reload schema';
 
 do $$

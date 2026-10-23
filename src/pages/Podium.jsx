@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useState } from 'react'
-import { Activity, Medal, Trophy, TrendingUp, Users } from 'lucide-react'
+import { Medal, Trophy, TrendingUp, Users } from 'lucide-react'
 import { getSupabaseError, supabase, TABLES } from '../lib/supabase'
 
 const podiumStyles = {
@@ -12,13 +12,14 @@ function winRate(player) {
   const wins = player.wins || 0
   const losses = player.losses || 0
   const games = wins + losses
-  return games ? Math.round((wins / games) * 100) : 0
+  return games ? wins / games : 0
 }
 
 export default function Podium() {
   const [players, setPlayers] = useState([])
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [clearing, setClearing] = useState(false)
   const [error, setError] = useState('')
 
   const refresh = useCallback(async () => {
@@ -58,6 +59,33 @@ export default function Podium() {
     }
   }, [])
 
+  async function clearSessionData() {
+    if (!session || clearing) return
+    const confirmed = window.confirm(`Clear all players, matches, and results from "${session.name}"? The session will remain in History.`)
+    if (!confirmed) return
+    setClearing(true)
+    setError('')
+    try {
+      const { error: matchesError } = await supabase.from(TABLES.matches)
+        .delete().eq('session_id', session.id)
+      if (matchesError) throw matchesError
+      const { error: playersError } = await supabase.from(TABLES.players)
+        .delete().eq('session_id', session.id)
+      if (playersError) throw playersError
+      const { data: updatedSession, error: updateError } = await supabase.from(TABLES.sessions)
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', session.id).select('id').maybeSingle()
+      if (updateError) throw updateError
+      if (!updatedSession) throw new Error('Session data was not cleared. Check the database policies and try again.')
+      setPlayers([])
+      setSession({ ...session, status: 'completed' })
+    } catch (err) {
+      setError(getSupabaseError(err))
+    } finally {
+      setClearing(false)
+    }
+  }
+
   useEffect(() => {
     let active = true
     const load = async () => { if (active) await refresh() }
@@ -69,7 +97,12 @@ export default function Podium() {
     return () => { active = false; clearTimeout(timer); channel.unsubscribe() }
   }, [refresh])
 
-  const rankedPlayers = [...players].sort((a, b) => (b.points || 0) - (a.points || 0) || (b.wins || 0) - (a.wins || 0) || a.name.localeCompare(b.name))
+  const rankedPlayers = [...players].sort((a, b) =>
+    (b.points || 0) - (a.points || 0) ||
+    winRate(b) - winRate(a) ||
+    (b.wins || 0) - (a.wins || 0) ||
+    a.name.localeCompare(b.name)
+  )
   const topThree = rankedPlayers.slice(0, 3)
   const totalWins = rankedPlayers.reduce((sum, player) => sum + (player.wins || 0), 0)
 
@@ -84,7 +117,7 @@ export default function Podium() {
               <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Podium</h1>
               <p className="mt-2 text-sm text-white/85 sm:text-base">{session ? `${session.name} · ${session.status === 'active' ? 'Live standings' : 'Final standings'}` : 'Standings for your latest session.'}</p>
             </div>
-            {session && <span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">{session.status === 'active' ? 'Session live' : 'Session complete'}</span>}
+            {session && <div className="flex flex-wrap items-center gap-2"><span className="w-fit rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold">{session.status === 'active' ? 'Session live' : 'Session complete'}</span><button type="button" onClick={clearSessionData} disabled={clearing} className="rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">{clearing ? 'Clearing...' : 'Clear data'}</button></div>}
           </div>
         </header>
 
@@ -105,7 +138,7 @@ export default function Podium() {
           </section>
         ) : !loading && rankedPlayers.length > 0 && <>
           <section>
-            <div className="mb-3"><h2 className="text-base font-semibold text-slate-900">Top players</h2><p className="mt-1 text-sm text-slate-500">Ranked by points, then wins.</p></div>
+            <div className="mb-3"><h2 className="text-base font-semibold text-slate-900">Top players</h2><p className="mt-1 text-sm text-slate-500">Ranked by points, win rate, then wins.</p></div>
             <div className="grid gap-3 sm:grid-cols-3">
               {topThree.map((player, index) => {
                 const rank = index + 1
@@ -116,7 +149,7 @@ export default function Podium() {
                   <div className="mt-5"><p className="truncate text-lg font-semibold text-slate-900">{player.name}</p><p className="mt-1 text-sm text-slate-600">{player.wins || 0} wins · {player.losses || 0} losses</p></div>
                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-black/5 pt-4">
                     <div><p className="text-xs text-slate-500">Points</p><p className="mt-1 text-xl font-bold text-slate-900">{player.points || 0}</p></div>
-                    <div><p className="text-xs text-slate-500">Win rate</p><p className="mt-1 text-xl font-bold text-emerald-800">{winRate(player)}%</p></div>
+                    <div><p className="text-xs text-slate-500">Win rate</p><p className="mt-1 text-xl font-bold text-emerald-800">{Math.round(winRate(player) * 100)}%</p></div>
                   </div>
                 </article>
               })}
@@ -127,7 +160,7 @@ export default function Podium() {
             <div className="border-b border-slate-100 px-4 py-4 sm:px-5"><h2 className="text-base font-semibold text-slate-900">Leaderboard</h2><p className="mt-1 text-sm text-slate-500">Player rankings and win rates for this session.</p></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left">
               <thead className="bg-slate-50"><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400"><th className="px-4 py-3 font-medium">Rank</th><th className="px-4 py-3 font-medium">Player</th><th className="px-4 py-3 text-center font-medium">Wins</th><th className="px-4 py-3 text-center font-medium">Losses</th><th className="px-4 py-3 text-center font-medium">Win rate</th><th className="px-4 py-3 text-right font-medium">Points</th></tr></thead>
-              <tbody>{rankedPlayers.map((player, index) => <tr key={player.id} className="border-b border-slate-100 last:border-0 hover:bg-emerald-50/40"><td className="px-4 py-3.5 text-sm font-semibold text-slate-500">{index + 1}</td><td className="px-4 py-3.5 font-medium text-slate-900">{player.name}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.wins || 0}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.losses || 0}</td><td className="px-4 py-3.5 text-center"><span className="inline-flex min-w-14 justify-center rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-800">{winRate(player)}%</span></td><td className="px-4 py-3.5 text-right font-semibold text-slate-900">{player.points || 0}</td></tr>)}</tbody>
+              <tbody>{rankedPlayers.map((player, index) => <tr key={player.id} className="border-b border-slate-100 last:border-0 hover:bg-emerald-50/40"><td className="px-4 py-3.5 text-sm font-semibold text-slate-500">{index + 1}</td><td className="px-4 py-3.5 font-medium text-slate-900">{player.name}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.wins || 0}</td><td className="px-4 py-3.5 text-center text-sm text-slate-600">{player.losses || 0}</td><td className="px-4 py-3.5 text-center"><span className="inline-flex min-w-14 justify-center rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-800">{Math.round(winRate(player) * 100)}%</span></td><td className="px-4 py-3.5 text-right font-semibold text-slate-900">{player.points || 0}</td></tr>)}</tbody>
             </table></div>
           </section>
         </>}

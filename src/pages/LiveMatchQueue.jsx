@@ -274,36 +274,13 @@ export default function LiveMatchQueue() {
 
     setBusy(true)
     setError('')
-    const adjustedPlayers = []
     try {
-      const winner = match.team_one_score > match.team_two_score ? 1 : match.team_two_score > match.team_one_score ? 2 : 0
-      if (winner) {
-        const resultRows = [
-          ...match.team_one_player_ids.map((id) => ({ id, won: winner === 1 })),
-          ...match.team_two_player_ids.map((id) => ({ id, won: winner === 2 })),
-        ]
-        for (const result of resultRows) {
-          const player = players.find((entry) => entry.id === result.id)
-          if (!player) continue
-          const nextStats = {
-            wins: Math.max(0, player.wins - (result.won ? 1 : 0)),
-            losses: Math.max(0, player.losses - (result.won ? 0 : 1)),
-            points: Math.max(0, player.points - (result.won ? 3 : 0)),
-          }
-          const { error: playerError } = await supabase.from(TABLES.players).update(nextStats).eq('id', player.id).eq('session_id', session.id)
-          if (playerError) throw playerError
-          adjustedPlayers.push({ player, nextStats })
-        }
-      }
-      const { error: deleteError } = await supabase
-        .from(TABLES.matches)
-        .delete()
-        .eq('id', match.id)
-        .eq('session_id', session.id)
+      const { error: deleteError } = await supabase.rpc('paddleq_delete_match', {
+        p_match_id: match.id,
+      })
       if (deleteError) throw deleteError
       await refresh()
     } catch (err) {
-      await Promise.all(adjustedPlayers.map(({ player }) => supabase.from(TABLES.players).update({ wins: player.wins, losses: player.losses, points: player.points }).eq('id', player.id).eq('session_id', session.id)))
       setError(getSupabaseError(err))
     } finally {
       setBusy(false)
@@ -324,7 +301,7 @@ export default function LiveMatchQueue() {
         .maybeSingle()
       if (updateError) throw updateError
       if (!completedSession) throw new Error('Session was not archived. Refresh the page and retry.')
-      navigate('/history')
+      navigate('/podium')
     } catch (err) {
       setError(getSupabaseError(err))
     } finally {
@@ -403,6 +380,8 @@ export default function LiveMatchQueue() {
             <div className="px-6 py-6 text-center">
               <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><img src={liveQueueQrCode} alt="QR code to open the live queue" className="h-full w-full object-contain" /></div>
               <p className="mt-4 text-xs text-slate-500">Scan to open the live queue.</p>
+              <a href="https://paddleq.vercel.app/live-queue" target="_blank" rel="noreferrer" className="mt-2 inline-flex text-sm font-semibold text-emerald-700 underline underline-offset-1">View live queue</a>
+
               <button type="button" onClick={() => setShowLiveQueueCard(false)} className="mt-5 w-full rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900">Done</button>
             </div>
           </section>

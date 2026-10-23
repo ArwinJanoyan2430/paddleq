@@ -13,7 +13,7 @@ export const TABLES = {
 
 export function getSupabaseError(error) {
   if (error?.code === 'PGRST202') {
-    return 'The match transaction functions are missing from Supabase. Run the latest supabase/schema.sql, then retry.'
+    return 'A required match transaction function is missing from Supabase. Run the latest supabase/schema.sql, then retry.'
   }
   if (error?.code === '42P01' || error?.code === 'PGRST205') {
     return 'Supabase tables are not set up yet. Run the SQL in supabase/schema.sql in your Supabase SQL Editor.'

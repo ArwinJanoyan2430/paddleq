@@ -14,9 +14,9 @@ import { getActiveSession, getSupabaseError, supabase, TABLES } from "../lib/sup
 
 export default function SetSession() {
   const [showAddMultiplePlayer, setShowAddMultiplePlayer] = useState(false);
-  const [sessionName, setSessionName] = useState("");
+  const [sessionName] = useState("");
   const [clubName, setClubName] = useState("");
-  const [courtCount, setCourtCount] = useState(4);
+  const [courtCount, setCourtCount] = useState(1);
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState("");
   const [bulkNames, setBulkNames] = useState("");
@@ -300,14 +300,17 @@ export default function SetSession() {
                 </div>
 
                 {/* Bulk Import */}
-                <a
-                    onClick={()=>setShowAddMultiplePlayer(!showAddMultiplePlayer)}
-                    className="cursor-pointer mt-3 w-full inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Add multiple players
-                  </a>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMultiplePlayer((shown) => !shown)}
+                  aria-expanded={showAddMultiplePlayer}
+                  aria-controls="bulk-player-import"
+                  className="mt-3 inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700"
+                >
+                  {showAddMultiplePlayer ? 'Hide bulk import' : 'Add multiple players'}
+                </button>
                 {showAddMultiplePlayer && (
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div id="bulk-player-import" className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <ClipboardList className="h-5 w-5 text-emerald-700" />
                       <h3 className="text-sm font-semibold text-slate-900">
